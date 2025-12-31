@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Dashboard</title>
+    <style>
+        .body {font-family: sans-serif;}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div style="width: 80%; margin: auto;">
+        <h2>Evolución del Valor Total (V_t)</h2>
+        <canvas id="lineChart"></canvas>
+        
+        <hr>
+
+        <h2>Evolución de Pesos (w_{i,t}) - Stacked Area</h2>
+        <canvas id="stackedAreaChart"></canvas>
+    </div>
+
+    <script>
+        // 1. Consumimos tu API recién creada
+        async function loadCharts() {
+            const response = await fetch('/api/portfolio-evolution/?start_date=2022-02-15&end_date=2022-12-31');
+            const result = await response.json();
+            const data = result.data;
+
+            const labels = data.map(d => d.date);
+
+            // --- Lógica para V_t (Line Chart) ---
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Valor Total Portfolio',
+                        data: data.map(d => d.portfolios[0].total_value), // Ajustar según portafolio
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                }
+            });
+
+            // --- Lógica para w_it (Stacked Area Chart) ---
+            // Primero extraemos los nombres únicos de activos
+            const assetsNames = data[0].portfolios[0].assets.map(a => a.asset);
+            const areaDatasets = assetsNames.map(name => {
+                return {
+                    label: name,
+                    data: data.map(d => {
+                        const asset = d.portfolios[0].assets.find(a => a.asset === name);
+                        return asset ? asset.weight : 0;
+                    }),
+                    fill: true
+                };
+            });
+
+            const areaCtx = document.getElementById('stackedAreaChart').getContext('2d');
+            new Chart(areaCtx, {
+                type: 'line',
+                data: { labels: labels, datasets: areaDatasets },
+                options: {
+                    scales: {
+                        y: { stacked: true, max: 1 } // El peso sumado siempre es 1 (100%)
+                    }
+                }
+            });
+        }
+
+        loadCharts();
+    </script>
+</body>
+</html>

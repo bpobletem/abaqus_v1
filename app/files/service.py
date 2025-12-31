@@ -59,14 +59,17 @@ def load_data(file_path: str):
         portfolio_map = {p.name: p for p in Portfolio.objects.all()}
 
         # PortfolioAsset
-        asset_prices = AssetPrice.objects.filter(date=initial_date).in_bulk(field_name='asset_id')
-        initial_date = weights['Fecha'].iloc[0]
+        initial_date = weights['Fecha'].iloc[0].date()
+        asset_prices = AssetPrice.objects.filter(date=initial_date)
+        price_map = {(p.asset_id, p.date): Decimal(p.price) for p in asset_prices}
         allocations = []
+        print("-------------------------")
         
         for _, row in weights.iterrows():
             asset = asset_map[row['activos']]
-            price = asset_prices.get(asset.id).price
-
+            print("id", asset.id, "date", initial_date)
+            price = price_map.get((asset.id, initial_date))
+            
             for name in portfolio_map:
                 weight = Decimal(str(row[name]))
                 quantity = weight * INITIAL_CAPITAL / price

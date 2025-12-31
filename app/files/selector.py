@@ -1,5 +1,5 @@
 from decimal import Decimal
-from models import Portfolio, PortfolioAsset, AssetPrice
+from .models import Portfolio, PortfolioAsset, AssetPrice
 
 def get_values_by_date(start_date, end_date):
     # Obtenemos todos los precios en el rango de fechas una sola vez
