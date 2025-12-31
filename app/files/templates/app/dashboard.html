@@ -1,74 +1,110 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Portfolio Dashboard</title>
-    <style>
-        .body {font-family: sans-serif;}
-    </style>
+    <meta charset="UTF-8">
+    <title>Portfolio Dashboard - Abaqus</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .chart-container { margin-bottom: 50px; position: relative; height: 400px; }
+        h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    </style>
 </head>
 <body>
-    <div style="width: 80%; margin: auto;">
-        <h2>Evolución del Valor Total (V_t)</h2>
-        <canvas id="lineChart"></canvas>
+    <div class="container">
+        <h2>Evolución del Valor Total ($V_t$)</h2>
+        <div class="chart-container">
+            <canvas id="lineChart"></canvas>
+        </div>
         
-        <hr>
-
-        <h2>Evolución de Pesos (w_{i,t}) - Stacked Area</h2>
-        <canvas id="stackedAreaChart"></canvas>
+        <h2>Distribución de activos ($w_{i,t}$)</h2>
+        <div class="chart-container">
+            <canvas id="stackedAreaChart"></canvas>
+        </div>
     </div>
 
     <script>
-        // 1. Consumimos tu API recién creada
         async function loadCharts() {
-            const response = await fetch('/api/portfolio-evolution/?start_date=2022-02-15&end_date=2022-12-31');
-            const result = await response.json();
-            const data = result.data;
-
-            const labels = data.map(d => d.date);
-
-            // --- Lógica para V_t (Line Chart) ---
-            const lineCtx = document.getElementById('lineChart').getContext('2d');
-            new Chart(lineCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Valor Total Portfolio',
-                        data: data.map(d => d.portfolios[0].total_value), // Ajustar según portafolio
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }]
-                }
-            });
-
-            // --- Lógica para w_it (Stacked Area Chart) ---
-            // Primero extraemos los nombres únicos de activos
-            const assetsNames = data[0].portfolios[0].assets.map(a => a.asset);
-            const areaDatasets = assetsNames.map(name => {
-                return {
-                    label: name,
-                    data: data.map(d => {
-                        const asset = d.portfolios[0].assets.find(a => a.asset === name);
-                        return asset ? asset.weight : 0;
-                    }),
-                    fill: true
-                };
-            });
-
-            const areaCtx = document.getElementById('stackedAreaChart').getContext('2d');
-            new Chart(areaCtx, {
-                type: 'line',
-                data: { labels: labels, datasets: areaDatasets },
-                options: {
-                    scales: {
-                        y: { stacked: true, max: 1 } // El peso sumado siempre es 1 (100%)
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/evolution?start_date=2022-02-15&end_date=2022-12-31', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
                     }
-                }
-            });
+                });
+
+                if (!response.ok) throw new Error("Error al obtener datos de la API");
+                
+                const result = await response.json();
+                const data = result.data;
+
+                // Extraer etiquetas de fecha
+                const labels = data.map(d => d.date);
+
+                // --- GRÁFICO DE LÍNEAS (V_t) ---
+                const lineCtx = document.getElementById('lineChart').getContext('2d');
+                new Chart(lineCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Valor Total del Portafolio',
+                            data: data.map(d => d.portfolios[0].total_value),
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                // --- GRÁFICO DE STACKED AREA (w_it) ---
+                // Obtenemos los nombres de los activos del primer registro
+                const assetsNames = data[0].portfolios[0].assets.map(a => a.asset);
+                
+                const colors = ['#3498db', '#e74c3c', '#f1c40f', '#9b59b6', '#34495e', '#1abc9c'];
+
+                const areaDatasets = assetsNames.map((name, index) => {
+                    return {
+                        label: name,
+                        data: data.map(d => {
+                            const asset = d.portfolios[0].assets.find(a => a.asset === name);
+                            return asset ? asset.weight : 0;
+                        }),
+                        backgroundColor: colors[index % colors.length],
+                        fill: true,
+                        pointRadius: 0
+                    };
+                });
+
+                const areaCtx = document.getElementById('stackedAreaChart').getContext('2d');
+                new Chart(areaCtx, {
+                    type: 'line',
+                    data: { labels: labels, datasets: areaDatasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { 
+                                stacked: true, 
+                                max: 1, 
+                                title: { display: true, text: 'Peso (0.0 - 1.0)' } 
+                            }
+                        },
+                        plugins: {
+                            tooltip: { mode: 'index' }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error en el Dashboard:", error);
+            }
         }
 
-        loadCharts();
+        window.onload = loadCharts;
     </script>
 </body>
 </html>

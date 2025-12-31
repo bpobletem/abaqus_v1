@@ -1,4 +1,5 @@
 from django.db import models
+from app.files.enums import TransactionType
 
 class Asset(models.Model):
     name = models.CharField(max_length=30, null=False)
@@ -38,6 +39,7 @@ class PortfolioAsset(models.Model):
         return f"{self.portfolio} - {self.asset} - {self.date} - {self.weight}"
 
 class Transaction(models.Model):
+    type = models.CharField(max_length=10) #agregar enum
     portfolio = models.ForeignKey(Portfolio, on_delete=models.PROTECT)
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT)
     date = models.DateField()
