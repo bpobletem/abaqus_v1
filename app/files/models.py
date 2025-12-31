@@ -32,7 +32,7 @@ class PortfolioAsset(models.Model):
     quantity = models.DecimalField(max_digits=20, decimal_places=10)
 
     class Meta:
-        unique_together = ("portfolio", "asset", "date")
+        unique_together = ("portfolio", "asset", "initial_date")
         
     def __str__(self):
         return f"{self.portfolio} - {self.asset} - {self.date} - {self.weight}"

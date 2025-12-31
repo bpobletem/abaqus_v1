@@ -5,7 +5,7 @@ from decimal import Decimal
 import pandas as pd
 
 def load_data(file_path: str):
-    # Usamos transaction.atomic para que si algo falla, no se cargue nada a medias
+    # Usamos transaction.atomic para que si algo falla, no se cargue nada
     with transaction.atomic():
         # Cargamos el Excel
         weights = pd.read_excel(file_path, sheet_name = 'weights')
@@ -59,21 +59,24 @@ def load_data(file_path: str):
         portfolio_map = {p.name: p for p in Portfolio.objects.all()}
 
         # PortfolioAsset
+        asset_prices = AssetPrice.objects.filter(date=initial_date).in_bulk(field_name='asset_id')
+        initial_date = weights['Fecha'].iloc[0]
         allocations = []
         
         for _, row in weights.iterrows():
-            date = row['Fecha']
             asset = asset_map[row['activos']]
+            price = asset_prices.get(asset.id).price
 
             for name in portfolio_map:
-                weight = row[name]
+                weight = Decimal(str(row[name]))
+                quantity = weight * INITIAL_CAPITAL / price
 
                 allocations.append(
                     PortfolioAsset(
                         portfolio=portfolio_map[name],
                         asset=asset,
-                        date=date,
-                        weight=Decimal(str(weight))
+                        initial_date=initial_date,
+                        quantity=quantity
                     )
                 )
 
