@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from app.files.service import load_data
+from app.files.services import load_data
 
 class Command(BaseCommand):
     help = 'Import data from Excel'
