@@ -32,10 +32,14 @@ def get_values_by_date(start_date, end_date):
             portfolio_assets_data = []
 
             # Filtramos las posiciones que pertenecen a este portafolio
-            portfolio_positions = [pos for pos in positions if pos.portfolio_id == portfolio.id]
+            portfolio_positions = [
+                pos for pos in positions 
+                if pos.portfolio_id == portfolio.id 
+                and pos.initial_date <= date                 # Debe haber empezado antes o hoy
+                and (pos.end_date is None or pos.end_date > date) # Y seguir vigente
+            ]
 
-            # Primer paso: Calcular el Valor Total V_t del portafolio en el día t
-            # V_t = Sum(Cantidad_i * Precio_{i,t})
+            # Calcular el Valor Total V_t del portafolio en el día t
             for pos in portfolio_positions:
                 price_t = price_map.get((date, pos.asset_id))
                 
@@ -49,7 +53,7 @@ def get_values_by_date(start_date, end_date):
                         "value_t": asset_value_t
                     })
 
-            # Segundo paso: Calcular los pesos w_{i,t} = Valor_i,t / V_t
+            # Calcular los weight = Valor_i,t / V_t
             final_assets = []
             for asset_item in portfolio_assets_data:
                 weight_t = asset_item["value_t"] / total_value_t if total_value_t > 0 else 0
