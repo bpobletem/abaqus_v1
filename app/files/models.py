@@ -19,8 +19,8 @@ class Portfolio(models.Model):
 class PortfolioAsset(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.PROTECT)
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT)
-    initial_date = models.DateField()
-    end_date = models.DateField(null=True)
+    initial_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True)
     quantity = models.DecimalField(max_digits=20, decimal_places=10)
 
     class Meta:
@@ -30,5 +30,5 @@ class Transaction(models.Model):
     type = models.CharField(max_length=7, choices=TransactionType.choices)
     portfolio = models.ForeignKey(Portfolio, on_delete=models.PROTECT)
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT)
-    date = models.DateField()
+    date = models.DateTimeField()
     value = models.DecimalField(max_digits=20, decimal_places=10)
