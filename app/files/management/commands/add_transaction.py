@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = "Ejecuta el rebalanceo del Bonus 2: Venta EEUU y Compra Europa"
 
     def handle(self, *args, **options):
-        portfolio_id = 1
+        portfolio_id = 3
         monto_operacion = 200_000_000
         fecha_operacion = date(2022, 5, 15)
         

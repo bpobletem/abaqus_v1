@@ -131,7 +131,7 @@ def add_transaction(*, portfolio_id, asset_id, type, amount, date):
 
 def execute_portfolio_rebalance(*, portfolio_id, asset_id, type, amount, date):
     # Obtener precio y cantidad del activo
-    price_object = AssetPrice.objects.select_related('asset').get(asset_id=asset_id, date=date).price
+    price_object = AssetPrice.objects.select_related('asset').get(asset_id=asset_id, date=date)
     quantity_delta = Decimal(amount) / price_object.price
 
     # Buscar la posición actual
