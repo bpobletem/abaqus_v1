@@ -3,26 +3,22 @@ from .models import Portfolio, PortfolioAsset, AssetPrice
 
 def get_values_by_date(start_date, end_date):
     # Obtenemos todos los precios en el rango de fechas una sola vez
-    prices = AssetPrice.objects.filter(
-        date__range=[start_date, end_date]
-    ).select_related('asset')
+    prices = AssetPrice.objects.filter(date__range=[start_date, end_date]).select_related('asset')
 
     # Obtenemos las cantidades de los portafolios
     positions = PortfolioAsset.objects.select_related('portfolio', 'asset').all()
 
-    # Organizamos los precios en un mapa para acceso rápido: { (fecha, asset_id): precio }
-    price_map = {
-        (p.date, p.asset_id): p.price for p in prices
-    }
+    # Organizamos los precios en un map para acceso rápido: { (fecha, asset_id): precio }
+    price_map = {(p.date, p.asset_id): p.price for p in prices}
 
     # Obtenemos todas las fechas únicas del rango para iterar
     unique_dates = sorted(list(set(prices.values_list('date', flat=True))))
     
     response = []
 
-    for date in unique_dates:
+    for current_date in unique_dates:
         daily_data = {
-            "date": date.strftime("%Y-%m-%d"),
+            "date": current_date.strftime("%Y-%m-%d"),
             "portfolios": []
         }
 
@@ -35,13 +31,14 @@ def get_values_by_date(start_date, end_date):
             portfolio_positions = [
                 pos for pos in positions 
                 if pos.portfolio_id == portfolio.id 
-                and pos.initial_date <= date                 # Debe haber empezado antes o hoy
-                and (pos.end_date is None or pos.end_date > date) # Y seguir vigente
+                and pos.initial_date.date() <= current_date
+                and (pos.end_date is None or pos.end_date.date() > current_date)
             ]
 
-            # Calcular el Valor Total V_t del portafolio en el día t
+            # Calcular el Valor Total del portafolio
+            # V_t = Sum(Cantidad_i * Precio_{i,t})
             for pos in portfolio_positions:
-                price_t = price_map.get((date, pos.asset_id))
+                price_t = price_map.get((current_date, pos.asset_id))
                 
                 if price_t:
                     asset_value_t = pos.quantity * price_t
@@ -53,7 +50,7 @@ def get_values_by_date(start_date, end_date):
                         "value_t": asset_value_t
                     })
 
-            # Calcular los weight = Valor_i,t / V_t
+            # Calcular weight = x_i,t / V_t
             final_assets = []
             for asset_item in portfolio_assets_data:
                 weight_t = asset_item["value_t"] / total_value_t if total_value_t > 0 else 0

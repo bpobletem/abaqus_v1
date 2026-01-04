@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import transaction
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from app.files.models import Asset, AssetPrice, Portfolio, PortfolioAsset, Transaction
 from decimal import Decimal
 from .enums import TransactionType
@@ -61,7 +61,7 @@ def load_data(file_path: str):
         portfolio_map = {p.name: p for p in Portfolio.objects.all()}
 
         # PortfolioAsset
-        initial_date = weights['Fecha'].iloc[0].date()
+        initial_date = pd.to_datetime(weights['Fecha'].iloc[0])
         asset_prices = AssetPrice.objects.filter(date=initial_date)
         price_map = {(p.asset_id, p.date): Decimal(p.price) for p in asset_prices}
         allocations = []
@@ -86,6 +86,24 @@ def load_data(file_path: str):
         PortfolioAsset.objects.bulk_create(allocations)
 
 def add_transaction(*, portfolio_id, asset_id, type, amount, date):
+    if not all([portfolio_id, asset_id, type, amount, date]):
+        raise ValidationError("Faltan parámetros")
+
+    if Decimal(str(amount)) <= 0:
+        raise ValidationError("El monto debe ser un valor positivo.")
+
+    try:
+        portfolio = Portfolio.objects.get(id=portfolio_id)
+        asset = Asset.objects.get(id=asset_id)
+    except Portfolio.DoesNotExist:
+        raise ValidationError(f"El portafolio con ID {portfolio_id} no existe.")
+    except Asset.DoesNotExist:
+        raise ValidationError(f"El activo con ID {asset_id} no existe.")
+
+    search_date = date.date() if hasattr(date, 'date') else date
+    if not AssetPrice.objects.filter(asset=asset, date=search_date).exists():
+        raise ValidationError(f"No existe un precio registrado para el activo {asset.name} en la fecha {search_date}.")
+
     try:
         with transaction.atomic():
             # Creamos el objecto de Transaction
@@ -104,36 +122,35 @@ def add_transaction(*, portfolio_id, asset_id, type, amount, date):
                 amount=amount,
                 date=date
             )
-        
-    except ObjectDoesNotExist as e:
-        print(f"Error: {str(e)}")
-        raise e
     
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error procesando transacción: {str(e)}")
         raise e
 
     return
 
 def execute_portfolio_rebalance(*, portfolio_id, asset_id, type, amount, date):
     # Obtener precio y cantidad del activo
-    price = AssetPrice.objects.get(asset_id=asset_id, date=date).price
-    quantity = price / Decimal(amount)
-    if type == TransactionType.SELL:
-        quantity = -quantity
+    price_object = AssetPrice.objects.select_related('asset').get(asset_id=asset_id, date=date).price
+    quantity_delta = Decimal(amount) / price_object.price
 
     # Buscar la posición actual
     current_position = PortfolioAsset.objects.filter(
         portfolio_id=portfolio_id,
         asset_id=asset_id,
         end_date__isnull=True
-    ).last()
+    ).order_by('initial_date').last()
+    
+    if type == TransactionType.SELL:
+        if not current_position or current_position.quantity < quantity_delta:
+            raise ValidationError(f"Saldo insuficiente de {price_object.asset.name}")
+        quantity_delta = -quantity_delta
 
     if current_position:
         # Editamos PortfolioAsset actual poniendole end_date
         current_position.end_date = date
         current_position.save()
-        new_quantity = current_position.quantity + quantity
+        new_quantity = current_position.quantity + quantity_delta
 
     # Creamos nuevo PortfolioAsset
     PortfolioAsset.objects.create(
