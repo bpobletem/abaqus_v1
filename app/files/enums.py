@@ -1,5 +1,5 @@
-from enum import Enum
+from django.db import models
 
-class TransactionType(Enum):
-    BUY = "buy"
-    SELL = "sell"
+class TransactionType(models.TextChoices):
+    BUY = 'BUY', 'Compra'
+    SELL = 'SELL', 'Venta'
