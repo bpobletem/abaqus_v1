@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 from app.files.models import Asset, AssetPrice, Portfolio, PortfolioAsset, Transaction
 from decimal import Decimal
 from .enums import TransactionType
@@ -85,22 +86,32 @@ def load_data(file_path: str):
         PortfolioAsset.objects.bulk_create(allocations)
 
 def add_transaction(*, portfolio_id, asset_id, type, amount, date):
-    # Creamos el objecto de Transaction
-    transaction_obj = Transaction.objects.create(
-        portfolio_id=portfolio_id,
-        asset_id=asset_id,
-        type=type,
-        value=amount,
-        date=date
-    )
+    try:
+        with transaction.atomic():
+            # Creamos el objecto de Transaction
+            transaction_obj = Transaction.objects.create(
+                portfolio_id=portfolio_id,
+                asset_id=asset_id,
+                type=type,
+                value=amount,
+                date=date
+            )
 
-    execute_portfolio_rebalance(
-        portfolio_id=portfolio_id,
-        asset_id=asset_id,
-        type=type,
-        amount=amount,
-        date=date
-    )
+            execute_portfolio_rebalance(
+                portfolio_id=portfolio_id,
+                asset_id=asset_id,
+                type=type,
+                amount=amount,
+                date=date
+            )
+        
+    except ObjectDoesNotExist as e:
+        print(f"Error: {str(e)}")
+        raise e
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise e
 
     return
 
@@ -108,7 +119,6 @@ def execute_portfolio_rebalance(*, portfolio_id, asset_id, type, amount, date):
     # Obtener precio y cantidad del activo
     price = AssetPrice.objects.get(asset_id=asset_id, date=date).price
     quantity = price / Decimal(amount)
-    # Editamos PortfolioAsset actual poniendole end_date
     if type == TransactionType.SELL:
         quantity = -quantity
 
@@ -117,9 +127,10 @@ def execute_portfolio_rebalance(*, portfolio_id, asset_id, type, amount, date):
         portfolio_id=portfolio_id,
         asset_id=asset_id,
         end_date__isnull=True
-    ).first()
+    ).last()
 
     if current_position:
+        # Editamos PortfolioAsset actual poniendole end_date
         current_position.end_date = date
         current_position.save()
         new_quantity = current_position.quantity + quantity
