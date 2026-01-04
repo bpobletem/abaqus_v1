@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.db import transaction
-from app.files.models import Asset, AssetPrice, Portfolio, PortfolioAsset
+from app.files.models import Asset, AssetPrice, Portfolio, PortfolioAsset, Transaction
 from decimal import Decimal
+from .enums import TransactionType
 import pandas as pd
 
 def load_data(file_path: str):
@@ -63,11 +64,9 @@ def load_data(file_path: str):
         asset_prices = AssetPrice.objects.filter(date=initial_date)
         price_map = {(p.asset_id, p.date): Decimal(p.price) for p in asset_prices}
         allocations = []
-        print("-------------------------")
         
         for _, row in weights.iterrows():
             asset = asset_map[row['activos']]
-            print("id", asset.id, "date", initial_date)
             price = price_map.get((asset.id, initial_date))
             
             for name in portfolio_map:
@@ -84,3 +83,52 @@ def load_data(file_path: str):
                 )
 
         PortfolioAsset.objects.bulk_create(allocations)
+
+def add_transaction(*, portfolio_id, asset_id, type, amount, date):
+    # Creamos el objecto de Transaction
+    transaction_obj = Transaction.objects.create(
+        portfolio_id=portfolio_id,
+        asset_id=asset_id,
+        type=type,
+        value=amount,
+        date=date
+    )
+
+    execute_portfolio_rebalance(
+        portfolio_id=portfolio_id,
+        asset_id=asset_id,
+        type=type,
+        amount=amount,
+        date=date
+    )
+
+    return
+
+def execute_portfolio_rebalance(*, portfolio_id, asset_id, type, amount, date):
+    # Obtener precio y cantidad del activo
+    price = AssetPrice.objects.get(asset_id=asset_id, date=date).price
+    quantity = price / Decimal(amount)
+    # Editamos PortfolioAsset actual poniendole end_date
+    if type == TransactionType.SELL:
+        quantity = -quantity
+
+    # Buscar la posición actual
+    current_position = PortfolioAsset.objects.filter(
+        portfolio_id=portfolio_id,
+        asset_id=asset_id,
+        end_date__isnull=True
+    ).first()
+
+    if current_position:
+        current_position.end_date = date
+        current_position.save()
+        new_quantity = current_position.quantity + quantity
+
+    # Creamos nuevo PortfolioAsset
+    PortfolioAsset.objects.create(
+        portfolio_id=portfolio_id,
+        asset_id=asset_id,
+        initial_date=date,
+        quantity=new_quantity
+    )
+    return
