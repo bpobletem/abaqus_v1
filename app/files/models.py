@@ -24,7 +24,7 @@ class PortfolioAsset(models.Model):
     quantity = models.DecimalField(max_digits=20, decimal_places=10)
 
     class Meta:
-        unique_together = ("portfolio", "asset", "initial_date")
+        unique_together = ("portfolio", "asset", "initial_date", "end_date")
 
 class Transaction(models.Model):
     type = models.CharField(max_length=7, choices=TransactionType.choices)
