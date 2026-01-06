@@ -40,10 +40,10 @@ def load_data(file_path: str):
         AssetPrice.objects.bulk_create(asset_price_objs, ignore_conflicts=True)
         
         # Portfolio 
-        # Quitamos las columnas que no son nombres
         INITIAL_CAPITAL = Decimal("1000000000")
-        BASE_COLUMNS = {"Fecha", "activos"}
         
+        # Quitamos las columnas que no son nombres de portafolio
+        BASE_COLUMNS = {"Fecha", "activos"}
         portfolio_names = [
             col for col in weights.columns
             if col not in BASE_COLUMNS

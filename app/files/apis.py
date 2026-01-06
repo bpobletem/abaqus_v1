@@ -12,9 +12,7 @@ class PortfolioEvolutionApi(APIView):
 
         def validate(self, data):
             if data['start_date'] > data['end_date']:
-                raise serializers.ValidationError(
-                    "La fecha de inicio debe ser anterior a la de fin"
-                )
+                raise serializers.ValidationError("La fecha de inicio debe ser anterior a la de fin")
             return data
 
     def get(self, request):
@@ -26,18 +24,15 @@ class PortfolioEvolutionApi(APIView):
                 start_date=serializer.validated_data['start_date'],
                 end_date=serializer.validated_data['end_date']
             )
-            
             return Response({"data": data}, status=status.HTTP_200_OK)
 
         except DjangoValidationError as e:
-            return Response(
-                {"detail": str(e)}, 
+            return Response({
+                "detail": str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
-            # Log de error para depuración
-            print(f"Error interno en API: {str(e)}")
-            return Response(
-                {"detail": "Ocurrió un error inesperado en el servidor."}, 
+            return Response({
+                "detail": "Ocurrió un error inesperado en el servidor."}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
