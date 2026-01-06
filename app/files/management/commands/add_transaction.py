@@ -6,7 +6,7 @@ from app.files.enums import TransactionType
 from datetime import date
 
 class Command(BaseCommand):
-    help = "Ejecuta el rebalanceo del Bonus 2: Venta EEUU y Compra Europa"
+    help = "Ejecuta la transacción del Bonus 2: Venta EEUU y Compra Europa"
 
     def handle(self, *args, **options):
         portfolio_id = 3
@@ -44,6 +44,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Rebalanceo completado exitosamente."))
 
         except Asset.DoesNotExist as e:
-            self.stdout.write(self.style.ERROR(f"Error: Asegúrate de tener los activos creados. {e}"))
+            self.stdout.write(self.style.ERROR(f"Error: Activo no encontrado. {e}"))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Ocurrió un error: {str(e)}"))

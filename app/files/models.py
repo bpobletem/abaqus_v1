@@ -32,3 +32,4 @@ class Transaction(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.PROTECT)
     date = models.DateTimeField()
     value = models.DecimalField(max_digits=20, decimal_places=10)
+    # Podriamos agregar quantity, precio al momento de la transaccion y costos asociados
