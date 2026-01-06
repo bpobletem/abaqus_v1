@@ -36,7 +36,7 @@ def get_values_by_date(start_date, end_date):
             ]
 
             # Calcular el Valor Total del portafolio
-            # V_t = Sum(Cantidad_i * Precio_{i,t})
+            # V_t = Sum(Cantidad_i * Precio_i,t)
             for pos in portfolio_positions:
                 price_t = price_map.get((current_date, pos.asset_id))
                 
