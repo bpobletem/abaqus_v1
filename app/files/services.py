@@ -68,7 +68,7 @@ def load_data(file_path: str):
         
         for _, row in weights.iterrows():
             asset = asset_map[row['activos']]
-            price = price_map.get((asset.id, initial_date))
+            price = price_map.get((asset.id, initial_date.date()))
             
             for name in portfolio_map:
                 weight = Decimal(str(row[name]))
