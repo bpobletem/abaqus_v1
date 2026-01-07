@@ -27,7 +27,7 @@
     <script>
         async function loadCharts() {
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/evolution?start_date=2022-02-15&end_date=2022-12-31', {
+                const response = await fetch('http://localhost:8000/api/evolution?start_date=2022-02-15&end_date=2022-12-31', {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
